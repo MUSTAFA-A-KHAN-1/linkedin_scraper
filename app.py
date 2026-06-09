@@ -4,7 +4,16 @@ import os
 from pathlib import Path
 
 from flask import Flask, render_template, request
-from linkedin_scraper import BrowserManager, CompanyPostsScraper, CompanyScraper, JobScraper, JobSearchScraper, PersonScraper
+from linkedin_scraper import (
+    BrowserManager,
+    CompanyPostsScraper,
+    CompanyScraper,
+    JobScraper,
+    JobSearchScraper,
+    PersonScraper,
+    login_with_credentials,
+    login_with_cookie,
+)
 from linkedin_scraper.core.exceptions import LinkedInScraperException
 
 app = Flask(__name__)
@@ -24,6 +33,22 @@ def as_json(data):
         return json.dumps(data, indent=2, ensure_ascii=False)
     except TypeError:
         return json.dumps(str(data), indent=2, ensure_ascii=False)
+
+
+async def create_session(session_path, email=None, password=None, cookie=None):
+    if not email and not cookie:
+        raise ValueError(
+            "Provide LinkedIn email/password or li_at cookie to create a session."
+        )
+
+    async with BrowserManager(headless=True) as browser:
+        if cookie:
+            await login_with_cookie(browser.page, cookie)
+        else:
+            await login_with_credentials(browser.page, email=email, password=password)
+
+        await browser.save_session(session_path)
+        return session_path
 
 
 async def run_scrape(session_path, scrape_type, target, location=None, limit=10):
@@ -71,21 +96,44 @@ def index():
         "location": "",
         "limit": 10,
         "session_file": DEFAULT_SESSION_FILE,
+        "email": "",
+        "password": "",
+        "cookie": "",
     }
 
     if request.method == "POST":
+        action = request.form.get("action", "scrape")
         form["scrape_type"] = request.form.get("scrape_type", "profile")
         form["target"] = request.form.get("target", "").strip()
         form["location"] = request.form.get("location", "").strip()
         form["limit"] = int(request.form.get("limit", 10) or 10)
         form["session_file"] = request.form.get("session_file", DEFAULT_SESSION_FILE).strip() or DEFAULT_SESSION_FILE
+        form["email"] = request.form.get("email", "").strip()
+        form["password"] = request.form.get("password", "")
+        form["cookie"] = request.form.get("cookie", "").strip()
 
-        if form["scrape_type"] != "job_search" and not form["target"]:
-            error = "Please enter a valid URL for the selected scrape type."
-        elif form["scrape_type"] == "job_search" and not form["target"]:
-            error = "Please enter job search keywords."
-        else:
-            try:
+        try:
+            if action == "create_session":
+                if not form["cookie"] and not (form["email"] and form["password"]):
+                    raise ValueError(
+                        "Enter LinkedIn email/password or li_at cookie to create a session."
+                    )
+
+                created_path = asyncio.run(
+                    create_session(
+                        form["session_file"],
+                        email=form["email"],
+                        password=form["password"],
+                        cookie=form["cookie"],
+                    )
+                )
+                result = f"Session created: {created_path}"
+            else:
+                if form["scrape_type"] != "job_search" and not form["target"]:
+                    raise ValueError("Please enter a valid URL for the selected scrape type.")
+                if form["scrape_type"] == "job_search" and not form["target"]:
+                    raise ValueError("Please enter job search keywords.")
+
                 result_data = asyncio.run(
                     run_scrape(
                         form["session_file"],
@@ -96,12 +144,12 @@ def index():
                     )
                 )
                 result = as_json(result_data)
-            except FileNotFoundError as exc:
-                error = str(exc)
-            except LinkedInScraperException as exc:
-                error = f"Scraper error: {exc}"
-            except Exception as exc:
-                error = f"Unexpected error: {exc}"
+        except FileNotFoundError as exc:
+            error = str(exc)
+        except LinkedInScraperException as exc:
+            error = f"Scraper error: {exc}"
+        except Exception as exc:
+            error = str(exc)
 
     return render_template(
         "index.html",

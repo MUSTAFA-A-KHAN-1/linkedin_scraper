@@ -55,8 +55,29 @@
         <strong>Important:</strong> You must have a valid LinkedIn session file in the app folder. Default: <code>{{ default_session }}</code>.
       </div>
 
+      <form method="post" style="margin-bottom: 24px;">
+        <input type="hidden" name="action" value="create_session" />
+        <input type="hidden" name="session_file" value="{{ default_session }}" />
+
+        <label for="email">LinkedIn Email</label>
+        <input id="email" name="email" type="text" value="{{ form.email }}" placeholder="Email or username" />
+
+        <label for="password">LinkedIn Password</label>
+        <input id="password" name="password" type="password" value="" placeholder="Password" />
+
+        <div class="note" style="margin-top: 12px;">
+          <strong>Or use li_at cookie:</strong> Provide your LinkedIn <code>li_at</code> cookie instead of email/password.
+        </div>
+
+        <label for="cookie">li_at cookie</label>
+        <input id="cookie" name="cookie" type="text" value="{{ form.cookie }}" placeholder="li_at cookie" />
+
+        <button type="submit">Create LinkedIn session file</button>
+      </form>
+
       <form method="post">
         <input id="session_file" name="session_file" type="hidden" value="{{ default_session }}" />
+        <input type="hidden" name="action" value="scrape" />
 
         <label for="scrape_type">Scrape type</label>
         <select id="scrape_type" name="scrape_type" onchange="updateFields()">
@@ -88,7 +109,7 @@
       </form>
 
       {% if result %}
-      <h2>Scrape result</h2>
+      <h2>Result</h2>
       <textarea readonly>{{ result }}</textarea>
       {% endif %}
     </div>
