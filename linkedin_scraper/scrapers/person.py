@@ -2,7 +2,7 @@
 
 import logging
 from typing import Optional
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 from playwright.async_api import Page
 
 from .base import BaseScraper
@@ -26,6 +26,28 @@ class PersonScraper(BaseScraper):
         """
         super().__init__(page, callback)
 
+    @classmethod
+    def _normalize_profile_url(cls, linkedin_url: str) -> str:
+        """
+        Normalize and validate a LinkedIn person profile URL.
+
+        Args:
+            linkedin_url: Candidate LinkedIn profile URL.
+
+        Returns:
+            Validated LinkedIn profile URL.
+
+        Raises:
+            ValueError: If the URL is not a valid LinkedIn profile URL.
+        """
+        normalized_url = cls.normalize_url(linkedin_url)
+        parsed = urlparse(normalized_url)
+        if "/in/" not in parsed.path:
+            raise ValueError(
+                f"Invalid LinkedIn person profile URL '{linkedin_url}'. URL must contain '/in/'."
+            )
+        return normalized_url
+
     async def scrape(self, linkedin_url: str) -> Person:
         """
         Scrape a LinkedIn person profile.
@@ -40,6 +62,7 @@ class PersonScraper(BaseScraper):
             AuthenticationError: If not logged in
             ScrapingError: If scraping fails
         """
+        linkedin_url = self._normalize_profile_url(linkedin_url)
         await self.callback.on_start("person", linkedin_url)
 
         try:

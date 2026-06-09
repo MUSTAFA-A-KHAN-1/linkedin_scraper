@@ -3,6 +3,7 @@
 import asyncio
 import logging
 from typing import Optional
+from urllib.parse import urlparse
 from playwright.async_api import Page, TimeoutError as PlaywrightTimeoutError
 
 from ..callbacks import ProgressCallback, SilentCallback
@@ -117,7 +118,40 @@ class BaseScraper:
             Extracted text or default
         """
         return await extract_text_safe(self.page, selector, default, timeout)
-    
+
+    @staticmethod
+    def normalize_url(url: str) -> str:
+        """
+        Normalize and validate a LinkedIn URL.
+
+        Args:
+            url: The URL or domain/path string to normalize.
+
+        Returns:
+            Normalized URL with scheme.
+
+        Raises:
+            ValueError: If the URL is invalid or not a LinkedIn URL.
+        """
+        input_url = url.strip()
+
+        if input_url.lower().startswith("linkedin.com/"):
+            input_url = f"https://{input_url}"
+        elif input_url.lower().startswith("www.linkedin.com/"):
+            input_url = f"https://{input_url}"
+
+        parsed = urlparse(input_url)
+        if parsed.scheme not in ("http", "https"):
+            raise ValueError(
+                f"Invalid URL scheme for '{url}'. Provide a valid LinkedIn URL starting with https://."
+            )
+        if not parsed.netloc or "linkedin.com" not in parsed.netloc.lower():
+            raise ValueError(
+                f"Invalid LinkedIn URL '{url}'. Provide a valid LinkedIn URL for linkedin.com."
+            )
+
+        return input_url
+
     @retry_async(max_attempts=3, backoff=2.0, exceptions=(PlaywrightTimeoutError,))
     async def safe_click(self, selector: str, timeout: float = 5000) -> bool:
         """
@@ -162,9 +196,10 @@ class BaseScraper:
             wait_until: Wait condition (domcontentloaded, networkidle, load)
             timeout: Timeout in milliseconds (default: 60000 = 60s)
         """
-        logger.info(f"Navigating to: {url}")
+        normalized_url = self.normalize_url(url)
+        logger.info(f"Navigating to: {normalized_url}")
         # Use type: ignore to bypass strict typing
-        await self.page.goto(url, wait_until=wait_until, timeout=timeout)  # type: ignore
+        await self.page.goto(normalized_url, wait_until=wait_until, timeout=timeout)  # type: ignore
         await self.check_rate_limit()
     
     async def extract_list_items(

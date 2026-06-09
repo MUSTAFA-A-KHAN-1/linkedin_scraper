@@ -125,3 +125,33 @@ def test_person_model_to_json():
     json_str = person.to_json()
     assert isinstance(json_str, str)
     assert "Test User" in json_str
+
+
+@pytest.mark.unit
+def test_base_scraper_normalize_url_accepts_linkedin_url_without_scheme():
+    """Test that URL normalization adds https scheme for linkedin URLs."""
+    from linkedin_scraper.scrapers.base import BaseScraper
+
+    normalized = BaseScraper.normalize_url("linkedin.com/in/test")
+    assert normalized == "https://linkedin.com/in/test"
+
+    normalized = BaseScraper.normalize_url("www.linkedin.com/in/test")
+    assert normalized == "https://www.linkedin.com/in/test"
+
+
+@pytest.mark.unit
+def test_base_scraper_normalize_url_rejects_invalid_url():
+    """Test that invalid input URLs are rejected."""
+    from linkedin_scraper.scrapers.base import BaseScraper
+
+    with pytest.raises(ValueError, match="Invalid URL scheme"):
+        BaseScraper.normalize_url("happy")
+
+
+@pytest.mark.unit
+def test_person_scraper_normalize_profile_url_rejects_non_profile_url():
+    """Test that person profile URL validation rejects non-/in/ URLs."""
+    from linkedin_scraper.scrapers.person import PersonScraper
+
+    with pytest.raises(ValueError, match="must contain '/in/'"):
+        PersonScraper._normalize_profile_url("https://www.linkedin.com/company/test")
