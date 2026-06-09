@@ -1,0 +1,15 @@
+services:
+  scraper:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: linkedin_scraper:latest
+    container_name: linkedin_scraper
+    volumes:
+      - .:/app
+    working_dir: /app
+    environment:
+      PYTHONUNBUFFERED: "1"
+    ports:
+      - "5000:5000"
+    command: python app.py

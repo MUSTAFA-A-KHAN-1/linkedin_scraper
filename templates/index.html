@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LinkedIn Scraper UI</title>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 0; padding: 24px; background: #f7f8fb; }
+      .container { max-width: 900px; margin: 0 auto; background: #fff; padding: 24px; border-radius: 10px; box-shadow: 0 10px 30px rgba(40, 41, 98, 0.05); }
+      h1 { margin-top: 0; }
+      label { display: block; margin: 14px 0 6px; font-weight: 600; }
+      input[type=text], select, textarea, input[type=number] { width: 100%; padding: 10px 12px; border: 1px solid #dce0e7; border-radius: 8px; font-size: 14px; }
+      textarea { min-height: 220px; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; }
+      button { background: #2563eb; color: #fff; border: none; padding: 12px 18px; border-radius: 8px; cursor: pointer; font-size: 16px; }
+      button:hover { background: #1d4ed8; }
+      .note { background: #eef2ff; color: #1e3a8a; padding: 12px; border-radius: 8px; margin: 18px 0; }
+      .error { background: #fee2e2; color: #991b1b; padding: 12px; border-radius: 8px; margin: 18px 0; }
+      .row { display: grid; gap: 18px; }
+      .row.col-2 { grid-template-columns: 1fr 1fr; }
+      .small { font-size: 13px; color: #475569; }
+    </style>
+    <script>
+      function updateFields() {
+        const type = document.getElementById('scrape_type').value;
+        const urlGroup = document.getElementById('url-group');
+        const searchGroup = document.getElementById('search-group');
+        const locationGroup = document.getElementById('location-group');
+        const limitGroup = document.getElementById('limit-group');
+
+        urlGroup.style.display = (type === 'job_search') ? 'none' : 'block';
+        searchGroup.style.display = (type === 'job_search') ? 'block' : 'none';
+        locationGroup.style.display = type === 'job_search' ? 'block' : 'none';
+        limitGroup.style.display = (type === 'company_posts' || type === 'job_search') ? 'block' : 'none';
+
+        const targetLabel = document.getElementById('target-label');
+        if (type === 'profile') targetLabel.innerText = 'Profile URL';
+        else if (type === 'company' || type === 'company_posts') targetLabel.innerText = 'Company URL';
+        else if (type === 'job') targetLabel.innerText = 'Job URL';
+        else targetLabel.innerText = 'Search Keywords';
+      }
+
+      window.addEventListener('DOMContentLoaded', updateFields);
+    </script>
+  </head>
+  <body>
+    <div class="container">
+      <h1>LinkedIn Scraper UI</h1>
+      <p>Use this web interface to scrape LinkedIn profiles, companies, jobs, or job search results using your saved session.</p>
+
+      {% if error %}
+      <div class="error">{{ error }}</div>
+      {% endif %}
+
+      <div class="note">
+        <strong>Important:</strong> You must have a valid LinkedIn session file in the app folder. Default: <code>{{ default_session }}</code>.
+      </div>
+
+      <form method="post">
+        <label for="session_file">Session file path</label>
+        <input id="session_file" name="session_file" type="text" value="{{ form.session_file }}" placeholder="linkedin_session.json" />
+
+        <label for="scrape_type">Scrape type</label>
+        <select id="scrape_type" name="scrape_type" onchange="updateFields()">
+          {% for value, label, help in scrape_types %}
+          <option value="{{ value }}" {% if value == form.scrape_type %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+
+        <div class="row">
+          <div>
+            <label id="target-label" for="target">Target</label>
+            <input id="target" name="target" type="text" value="{{ form.target }}" placeholder="Enter URL or search keywords" />
+            <p class="small">Enter the page URL or keywords for the selected type.</p>
+          </div>
+
+          <div id="location-group">
+            <label for="location">Job location</label>
+            <input id="location" name="location" type="text" value="{{ form.location }}" placeholder="San Francisco, CA" />
+          </div>
+        </div>
+
+        <div id="limit-group">
+          <label for="limit">Limit</label>
+          <input id="limit" name="limit" type="number" min="1" max="50" value="{{ form.limit }}" />
+          <p class="small">Number of items to return for job search or company posts.</p>
+        </div>
+
+        <button type="submit">Scrape now</button>
+      </form>
+
+      {% if result %}
+      <h2>Scrape result</h2>
+      <textarea readonly>{{ result }}</textarea>
+      {% endif %}
+    </div>
+  </body>
+</html>
