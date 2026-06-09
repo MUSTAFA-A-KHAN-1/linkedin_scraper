@@ -56,8 +56,7 @@
       </div>
 
       <form method="post">
-        <label for="session_file">Session file path</label>
-        <input id="session_file" name="session_file" type="text" value="{{ form.session_file }}" placeholder="linkedin_session.json" />
+        <input id="session_file" name="session_file" type="hidden" value="{{ default_session }}" />
 
         <label for="scrape_type">Scrape type</label>
         <select id="scrape_type" name="scrape_type" onchange="updateFields()">
